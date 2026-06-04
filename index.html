@@ -61,15 +61,16 @@
         const ArrowLeft = (p) => <FAIcon name="fa-arrow-left" {...p} />;
         const Pencil = (p) => <FAIcon name="fa-pen-to-square" {...p} />;
         const Settings = (p) => <FAIcon name="fa-gear" {...p} />;
+        const ClipboardEdit = (p) => <FAIcon name="fa-clipboard-list" {...p} />;
 
         function App() {
           // --- SYSTEM USERS STATE ---
           const [systemUsers, setSystemUsers] = useState([
-            { id: 1, name: 'Taylor Sparks', email: 'taylor@inventi.ph' },
-            { id: 2, name: 'Jamie Sunny', email: 'jamie@inventi.ph' },
-            { id: 3, name: 'Jordan River', email: 'jordan@inventi.asia' },
-            { id: 4, name: 'Alex Woods', email: 'alex@inventi.ph' },
-            { id: 5, name: 'Morgan Bloom', email: 'morgan@inventi.asia' }
+            { id: 1, name: 'Taylor Sparks', email: 'taylor@inventi.ph', departments: ['Customer Support', 'UI Design'] },
+            { id: 2, name: 'Jamie Sunny', email: 'jamie@inventi.ph', departments: ['Marketing', 'Sales'] },
+            { id: 3, name: 'Jordan River', email: 'jordan@inventi.asia', departments: ['Customer Support'] },
+            { id: 4, name: 'Alex Woods', email: 'alex@inventi.ph', departments: ['Development', 'Quality Assurance'] },
+            { id: 5, name: 'Morgan Bloom', email: 'morgan@inventi.asia', departments: ['Human Resource'] }
           ]);
 
           // --- STATE ---
@@ -82,6 +83,7 @@
           // Profile Update State
           const [showProfileModal, setShowProfileModal] = useState(false);
           const [newNickname, setNewNickname] = useState('');
+          const [editDepartments, setEditDepartments] = useState([]);
 
           // Active view inside the dashboard
           const [activeTab, setActiveTab] = useState('overview');
@@ -273,14 +275,17 @@
               name = name.charAt(0).toUpperCase() + name.slice(1); // Capitalize
 
               if (!existingUser) {
-                setSystemUsers([...systemUsers, { id: Date.now(), name: name, email: loginEmail }]);
+                const newUser = { id: Date.now(), name: name, email: loginEmail, departments: [] };
+                setSystemUsers([...systemUsers, newUser]);
+                existingUser = newUser;
               }
 
               setUser({
                 name: name,
                 role: 'Community Member',
                 email: loginEmail,
-                avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`
+                avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`,
+                departments: existingUser.departments || []
               });
               setIsLoading(false);
               triggerToast(`Welcome to the circle, ${name}! ✨`);
@@ -292,13 +297,19 @@
             if (!newNickname.trim()) return;
             
             // Update active user
-            setUser({ ...user, name: newNickname });
+            setUser({ ...user, name: newNickname, departments: editDepartments });
             
             // Update in system users list
-            setSystemUsers(systemUsers.map(u => u.email === user.email ? { ...u, name: newNickname } : u));
+            setSystemUsers(systemUsers.map(u => u.email === user.email ? { ...u, name: newNickname, departments: editDepartments } : u));
             
             setShowProfileModal(false);
-            triggerToast('Profile nickname updated successfully! 👤');
+            triggerToast('Profile updated successfully! 👤');
+          };
+
+          const toggleEditDepartment = (deptName) => {
+            setEditDepartments(prev => 
+              prev.includes(deptName) ? prev.filter(d => d !== deptName) : [...prev, deptName]
+            );
           };
 
           const handleLogout = () => {
@@ -726,7 +737,26 @@
                           className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
                         />
                       </div>
-                      <button type="submit" className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl transition">
+                      
+                      <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">My Departments</label>
+                        <div className="max-h-40 overflow-y-auto bg-stone-50 border border-stone-200 rounded-xl p-2 space-y-1">
+                          {departments.map(dept => (
+                            <label key={dept.id} className="flex items-center gap-3 p-2 hover:bg-stone-100 rounded-lg cursor-pointer transition">
+                              <input 
+                                type="checkbox" 
+                                checked={editDepartments.includes(dept.name)}
+                                onChange={() => toggleEditDepartment(dept.name)}
+                                className="w-4 h-4 text-amber-500 rounded focus:ring-amber-400"
+                              />
+                              <span className="text-sm font-medium text-stone-700">{dept.name}</span>
+                            </label>
+                          ))}
+                          {departments.length === 0 && <p className="text-xs text-stone-400 p-2">No departments available.</p>}
+                        </div>
+                      </div>
+
+                      <button type="submit" className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl transition mt-2">
                         Save Changes
                       </button>
                     </form>
@@ -762,7 +792,7 @@
                       
                       <div className="flex items-center gap-2 md:gap-4">
                         <button 
-                          onClick={() => { setNewNickname(user.name); setShowProfileModal(true); }}
+                          onClick={() => { setNewNickname(user.name); setEditDepartments(user.departments || []); setShowProfileModal(true); }}
                           className="flex items-center gap-3 bg-stone-50/80 hover:bg-stone-100 transition backdrop-blur-xs p-1.5 pr-4 rounded-2xl border border-stone-200 cursor-pointer group text-left"
                         >
                           <img src={user.avatar} className="w-10 h-10 rounded-xl border border-amber-200 bg-amber-50" alt="User Avatar" />
@@ -829,12 +859,20 @@
                         <Building className="w-4 h-4" /> Departments ({departments.length})
                       </button>
                       <button 
-                        onClick={() => setActiveTab('kpis')}
+                        onClick={() => setActiveTab('kpi-setup')}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap ${
-                          activeTab === 'kpis' ? 'bg-amber-100 text-amber-900 shadow-xs border border-amber-200' : 'text-stone-500 hover:text-stone-800 hover:bg-stone-50'
+                          activeTab === 'kpi-setup' ? 'bg-amber-100 text-amber-900 shadow-xs border border-amber-200' : 'text-stone-500 hover:text-stone-800 hover:bg-stone-50'
                         }`}
                       >
-                        <Target className="w-4 h-4" /> Strategic KPIs ({kpis.length})
+                        <Target className="w-4 h-4" /> KPI Setup
+                      </button>
+                      <button 
+                        onClick={() => setActiveTab('kpi-update')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap ${
+                          activeTab === 'kpi-update' ? 'bg-amber-100 text-amber-900 shadow-xs border border-amber-200' : 'text-stone-500 hover:text-stone-800 hover:bg-stone-50'
+                        }`}
+                      >
+                        <ClipboardEdit className="w-4 h-4" /> Update KPIs
                       </button>
                     </div>
                   </div>
@@ -1086,301 +1124,16 @@
                         </div>
                       )}
 
-
-                      {/* TAB 2: APPRECIATION SHOUT-OUTS BOARD */}
-                      {activeTab === 'shoutouts' && (
-                        <div className="space-y-6">
-                          <div className="bg-gradient-to-br from-amber-400 to-rose-400 p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
-                            <div className="absolute right-0 bottom-0 opacity-15">
-                              <Sparkles className="w-48 h-48 stroke-1" />
-                            </div>
-                            <h3 className="text-2xl font-black mb-1 flex items-center gap-2">
-                              <Sparkles className="w-6 h-6 animate-bounce" /> The Heart Hearth
-                            </h3>
-                            <p className="text-sm text-amber-50 max-w-xl">
-                              Our community thrive rate relies heavily on positive reinforcement and celebrating small contributions. Drop a virtual post-it and praise a fellow community member!
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-xs border border-amber-100 h-fit">
-                              <div className="flex items-center gap-2 mb-4">
-                                <span className="p-1.5 bg-amber-100 text-amber-700 rounded-lg"><Send className="w-4 h-4" /></span>
-                                <h4 className="font-extrabold text-stone-900">Pin a New Praise</h4>
-                              </div>
-                              <form onSubmit={handleAddShoutout} className="space-y-4">
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Recipient Name</label>
-                                  <input type="text" required placeholder="e.g. Jamie Sunny" value={newShoutTo} onChange={(e) => setNewShoutTo(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Praise Message</label>
-                                  <textarea rows="4" required placeholder="What did they do? How did it lift the community's spirits?" value={newShoutText} onChange={(e) => setNewShoutText(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm resize-none"></textarea>
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Sticky Color</label>
-                                  <div className="flex gap-2">
-                                    {[
-                                      { colorClass: 'bg-amber-100 border-amber-300', value: 'bg-amber-100' },
-                                      { colorClass: 'bg-emerald-100 border-emerald-300', value: 'bg-emerald-100' },
-                                      { colorClass: 'bg-purple-100 border-purple-300', value: 'bg-purple-100' },
-                                      { colorClass: 'bg-rose-100 border-rose-300', value: 'bg-rose-100' },
-                                      { colorClass: 'bg-sky-100 border-sky-300', value: 'bg-sky-100' }
-                                    ].map((pill) => (
-                                      <button key={pill.value} type="button" onClick={() => setNewShoutColor(pill.value)} className={`w-8 h-8 rounded-full border-2 transition ${pill.colorClass} ${newShoutColor === pill.value ? 'scale-110 shadow-md border-stone-700' : ''}`} />
-                                    ))}
-                                  </div>
-                                </div>
-                                <button type="submit" className="w-full bg-stone-900 text-white font-bold py-2.5 rounded-xl transition hover:bg-stone-800 text-sm">
-                                  Pin it on the Wall 📌
-                                </button>
-                              </form>
-                            </div>
-
-                            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
-                              {shoutOuts.map((shout) => (
-                                <div key={shout.id} className={`p-6 rounded-3xl border border-stone-100 shadow-xs flex flex-col justify-between hover:rotate-1 transition-all duration-200 transform ${shout.color}`}>
-                                  <div>
-                                    <div className="flex items-start justify-between mb-3">
-                                      <span className="text-[10px] font-bold px-2 py-0.5 bg-white/60 text-stone-700 rounded-full tracking-wide">Shout-out! 📣</span>
-                                      <Sparkles className="w-4 h-4 text-amber-500/70" />
-                                    </div>
-                                    <p className="text-stone-800 text-sm leading-relaxed italic mb-4">"{shout.text}"</p>
-                                  </div>
-                                  <div className="pt-3 border-t border-dashed border-stone-900/10 flex justify-between items-center">
-                                    <div>
-                                      <span className="text-[10px] uppercase text-stone-400 font-bold block">For</span>
-                                      <span className="font-extrabold text-stone-900 text-sm">{shout.to}</span>
-                                    </div>
-                                    <div className="text-right">
-                                      <span className="text-[10px] uppercase text-stone-400 font-bold block">From</span>
-                                      <span className="font-semibold text-stone-700 text-xs">{shout.from}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-
-                      {/* TAB 3: ACTIVE COLLABORATIVE COOPERATIONS (KPI 2) */}
-                      {activeTab === 'collabs' && (
-                        <div className="space-y-6 pb-12">
-                          <div className="bg-amber-100/70 backdrop-blur-md p-6 rounded-3xl border border-amber-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="space-y-1">
-                              <h4 className="font-extrabold text-stone-900 text-lg flex items-center gap-2">
-                                <Users className="w-5 h-5 text-amber-600" /> Co-operation Seedlings
-                              </h4>
-                              <p className="text-sm text-stone-600 max-w-lg">
-                                Healthy communities operate in tandem! Plant shared tasks (co-operations) and metrics to work toward together.
-                              </p>
-                            </div>
-                            <div className="text-xs font-semibold px-3 py-1 bg-amber-200/50 text-amber-900 rounded-full border border-amber-300">
-                              Target KPI: 5 concurrent collaborations
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-xs border border-amber-100 h-fit">
-                              <div className="flex items-center gap-2 mb-4">
-                                <span className="p-1.5 bg-amber-100 text-amber-700 rounded-lg"><Plus className="w-4 h-4" /></span>
-                                <h4 className="font-extrabold text-stone-900">Seed a Collaboration</h4>
-                              </div>
-                              <form onSubmit={handleAddCollab} className="space-y-4">
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Cooperation Title</label>
-                                  <input type="text" required placeholder="e.g. Design Warm Winter Swag" value={newCollabTitle} onChange={(e) => setNewCollabTitle(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Category Tag</label>
-                                  <select value={newCollabCategory} onChange={(e) => setNewCollabCategory(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm">
-                                    <option value="Culture">Culture & Welcome</option>
-                                    <option value="Learning">Learning & Exchange</option>
-                                    <option value="Wellness">Wellness & Health</option>
-                                    <option value="Eco">Eco-Friendliness</option>
-                                  </select>
-                                </div>
-                                <button type="submit" className="w-full bg-stone-900 text-white font-bold py-2.5 rounded-xl transition hover:bg-stone-800 text-sm">
-                                  Launch cooperation 🚀
-                                </button>
-                              </form>
-                            </div>
-
-                            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {collaborations.map((collab) => {
-                                let tagStyle = "bg-stone-100 text-stone-600";
-                                if (collab.category === 'Culture') tagStyle = "bg-rose-100 text-rose-800";
-                                if (collab.category === 'Learning') tagStyle = "bg-purple-100 text-purple-800";
-                                if (collab.category === 'Wellness') tagStyle = "bg-emerald-100 text-emerald-800";
-                                if (collab.category === 'Eco') tagStyle = "bg-amber-100 text-amber-800";
-
-                                return (
-                                  <div key={collab.id} className="bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-stone-100 shadow-xs flex flex-col justify-between hover:shadow-md transition">
-                                    <div>
-                                      <div className="flex justify-between items-start mb-3">
-                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${tagStyle}`}>{collab.category}</span>
-                                        <span className={`text-[10px] font-extrabold tracking-wide uppercase px-2 py-0.5 rounded-full ${collab.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
-                                          {collab.status}
-                                        </span>
-                                      </div>
-                                      <h5 className="font-extrabold text-stone-900 text-base leading-snug mb-2">{collab.title}</h5>
-                                      <p className="text-xs text-stone-500 mb-4">Lead: <span className="font-medium text-stone-700">{collab.lead}</span></p>
-                                    </div>
-                                    <div className="pt-3 border-t border-dashed border-stone-100 flex justify-between items-center text-xs">
-                                      <span className="text-stone-400 flex items-center gap-1"><Users className="w-4 h-4" /> {collab.helpers} contributors</span>
-                                      {collab.status !== 'Completed' && (
-                                        <button onClick={() => {
-                                            setCollaborations(collaborations.map(c => c.id === collab.id ? {...c, helpers: c.helpers + 1, status: 'In Progress'} : c));
-                                            triggerToast(`Joined as helper for ${collab.title}! 🤝`);
-                                          }} className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
-                                          Join as Helper
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-
-                      {/* TAB 4: BRAINPOWER / SHARING JOURNAL (KPI 3) */}
-                      {activeTab === 'growth' && (
-                        <div className="space-y-6 pb-12">
-                          <div className="bg-purple-950 p-6 rounded-3xl text-purple-100 shadow-md relative overflow-hidden">
-                            <div className="absolute right-0 top-0 opacity-10">
-                              <BookOpen className="w-52 h-52 stroke-1 text-white" />
-                            </div>
-                            <h3 className="text-2xl font-black mb-1 flex items-center gap-2 text-purple-200">
-                              <BookOpen className="w-6 h-6" /> Growth & Learning Ledger
-                            </h3>
-                            <p className="text-sm text-purple-200/90 max-w-xl">
-                              Every hour logged of peer guidance, workshop, or collaborative knowledge-sharing increments our collective **Care Hour KPI**. Log your contributions today!
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-xs border border-purple-100 h-fit">
-                              <div className="flex items-center gap-2 mb-4 text-purple-800">
-                                <span className="p-1.5 bg-purple-100 text-purple-800 rounded-lg"><Plus className="w-4 h-4" /></span>
-                                <h4 className="font-extrabold">Log Sharing Action</h4>
-                              </div>
-                              <form onSubmit={handleAddHours} className="space-y-4">
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Guidance / Sharing Activity</label>
-                                  <input type="text" required placeholder="e.g. Masterclass in CSS grid alignment" value={newActivity} onChange={(e) => setNewActivity(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-purple-300 text-sm" />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Duration (Hours)</label>
-                                  <input type="number" step="0.5" required placeholder="e.g. 1.5" value={newHours} onChange={(e) => setNewHours(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-purple-300 text-sm" />
-                                </div>
-                                <button type="submit" className="w-full bg-purple-900 hover:bg-purple-950 text-white font-bold py-2.5 rounded-xl transition text-sm">
-                                  Register Growth Time ⏱️
-                                </button>
-                              </form>
-                            </div>
-
-                            <div className="lg:col-span-2 bg-white/95 backdrop-blur-md p-6 rounded-3xl border border-stone-100 shadow-xs space-y-4">
-                              <div className="flex justify-between items-center pb-2 border-b border-stone-100">
-                                <span className="font-extrabold text-stone-900 text-base">Recorded Contributions</span>
-                                <span className="text-xs bg-purple-50 text-purple-800 px-3 py-1 rounded-full font-bold">Total: {totalGrowthHours} Hours</span>
-                              </div>
-                              <div className="divide-y divide-stone-100">
-                                {growthHours.map((log) => (
-                                  <div key={log.id} className="py-4 flex justify-between items-center gap-4 hover:bg-stone-50/50 px-2 transition rounded-lg">
-                                    <div className="flex items-start gap-3">
-                                      <span className="p-2 bg-purple-50 text-purple-700 rounded-xl mt-0.5"><BookOpen className="w-4 h-4" /></span>
-                                      <div>
-                                        <p className="font-extrabold text-stone-900 text-sm leading-snug">{log.activity}</p>
-                                        <p className="text-xs text-stone-500 mt-1">Shared by <span className="font-semibold text-stone-700">{log.contributor}</span> • {log.date}</p>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <span className="text-sm font-black text-purple-700 block">{log.hours}h</span>
-                                      <span className="text-[9px] uppercase tracking-wider text-stone-400 font-bold">Contribution</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* TAB 5: DEPARTMENTS */}
-                      {activeTab === 'departments' && (
-                        <div className="space-y-6 pb-12">
-                          <div className="bg-emerald-950 p-6 rounded-3xl text-emerald-100 shadow-md relative overflow-hidden">
-                            <div className="absolute right-0 top-0 opacity-10">
-                              <Building className="w-52 h-52 stroke-1 text-white" />
-                            </div>
-                            <h3 className="text-2xl font-black mb-1 flex items-center gap-2 text-emerald-200">
-                              <Building className="w-6 h-6" /> Community Neighborhoods (Departments)
-                            </h3>
-                            <p className="text-sm text-emerald-200/90 max-w-xl">
-                              Our community is made up of diverse neighborhoods. Manage the active departments and see how the vibe checks distribute across different functional teams.
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-xs border border-emerald-100 h-fit">
-                              <div className="flex items-center gap-2 mb-4 text-emerald-800">
-                                <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg"><Plus className="w-4 h-4" /></span>
-                                <h4 className="font-extrabold">Zone a New Neighborhood</h4>
-                              </div>
-                              <form onSubmit={handleAddDepartment} className="space-y-4">
-                                <div>
-                                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Department Name</label>
-                                  <input type="text" required placeholder="e.g. Legal, R&D..." value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-emerald-300 text-sm" />
-                                </div>
-                                <button type="submit" className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-sm">
-                                  Create Department 🏢
-                                </button>
-                              </form>
-                            </div>
-
-                            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {departments.map((dept) => (
-                                <div key={dept.id} className="bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-stone-100 shadow-xs flex flex-col justify-between hover:shadow-md transition">
-                                  <div>
-                                    <div className="flex justify-between items-start mb-3">
-                                      <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><Building className="w-5 h-5" /></span>
-                                      <span className={`text-[10px] font-extrabold tracking-wide px-2 py-0.5 rounded-full ${dept.vibe >= 85 ? 'bg-emerald-100 text-emerald-800' : dept.vibe >= 70 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}`}>
-                                        {dept.vibe}% Vibe
-                                      </span>
-                                    </div>
-                                    <h5 className="font-extrabold text-stone-900 text-lg leading-snug mb-1">{dept.name}</h5>
-                                    <p className="text-xs text-stone-500 mb-4">Active Members: <span className="font-medium text-stone-700">{dept.members}</span></p>
-                                  </div>
-                                  <div className="pt-3 border-t border-dashed border-stone-100 flex justify-between items-center text-xs">
-                                    <button onClick={() => triggerToast(`Viewing ${dept.name} pulse board... (Coming soon!)`)} className="font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1">
-                                      <Activity className="w-3 h-3" /> View Team Pulse
-                                    </button>
-                                    <button onClick={() => { setDepartments(departments.filter(d => d.id !== dept.id)); triggerToast(`${dept.name} department removed.`); }} className="text-stone-300 hover:text-rose-500 transition" title="Remove Department">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* TAB 6: KPIs */}
-                      {activeTab === 'kpis' && (
+                      {/* TAB 6: KPI SETUP */}
+                      {activeTab === 'kpi-setup' && (
                         <div className="space-y-6 pb-12">
                           <div className="bg-indigo-950 p-6 rounded-3xl text-indigo-100 shadow-md relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="z-10">
                               <h3 className="text-2xl font-black mb-1 flex items-center gap-2 text-indigo-200">
-                                <Target className="w-6 h-6" /> Department KPIs
+                                <Target className="w-6 h-6" /> Strategic KPI Setup
                               </h3>
                               <p className="text-sm text-indigo-200/90 max-w-xl">
-                                Create measurable goals aligned with our functional neighborhoods. Assigned champions can update their scores directly.
+                                Create and structure measurable goals mapped to our functional neighborhoods.
                               </p>
                             </div>
                             <button onClick={() => { setShowPresentation(true); setPresentationView('title'); }} className="z-10 bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-lg flex items-center gap-2 whitespace-nowrap">
@@ -1500,11 +1253,10 @@
                               </form>
                             </div>
 
-                            {/* KPIs List Display */}
+                            {/* KPIs Setup List Display (View & Edit Structure Only) */}
                             <div className="lg:col-span-2 grid grid-cols-1 gap-4">
                               {kpis.map((kpi) => {
                                 const status = getKpiStatus(kpi);
-                                const isUpdating = updatingKpiId === kpi.id;
                                 
                                 let displayColor = 'text-stone-300';
                                 let bgBadge = 'bg-stone-100 text-stone-600';
@@ -1519,7 +1271,6 @@
 
                                 return (
                                   <div key={kpi.id} className="bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-stone-100 shadow-xs flex flex-col sm:flex-row justify-between gap-6 hover:shadow-md transition">
-                                    {/* Info Side */}
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 flex items-center gap-1">
@@ -1529,7 +1280,7 @@
                                           {kpi.frequency}
                                         </span>
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${bgBadge}`}>
-                                          {status === 'pending' ? 'Waiting for Update' : `Target ${status}`}
+                                          {status === 'pending' ? 'Pending' : `Target ${status}`}
                                         </span>
                                       </div>
 
@@ -1551,34 +1302,127 @@
                                       </div>
                                     </div>
 
-                                    {/* Action & Metric Side */}
-                                    <div className="sm:w-48 bg-stone-50/50 p-4 rounded-xl border border-stone-100 flex flex-col justify-between items-center text-center">
+                                    <div className="sm:w-32 bg-stone-50/50 p-4 rounded-xl border border-stone-100 flex flex-col justify-center items-center text-center">
+                                      <p className="text-[10px] uppercase font-bold tracking-wider text-stone-400">Current Value</p>
+                                      <p className={`text-2xl font-black ${displayColor} mt-1`}>
+                                        {kpi.currentValue === null ? '--' : `${kpi.currentValue}${kpi.format === 'percent' ? '%' : ''}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* TAB 7: UPDATE KPIs */}
+                      {activeTab === 'kpi-update' && (
+                        <div className="space-y-6 pb-12">
+                          <div className="bg-sky-950 p-6 rounded-3xl text-sky-100 shadow-md relative overflow-hidden flex flex-col gap-2">
+                            <h3 className="text-2xl font-black flex items-center gap-2 text-sky-200 z-10">
+                              <ClipboardEdit className="w-6 h-6" /> Update My Department KPIs
+                            </h3>
+                            <p className="text-sm text-sky-200/90 max-w-2xl z-10">
+                              Fill in the latest values for the KPIs assigned to your departments. Make sure to check the target and format before submitting!
+                            </p>
+                            <div className="absolute right-0 top-0 opacity-10">
+                              <Activity className="w-52 h-52 stroke-1 text-white" />
+                            </div>
+                          </div>
+
+                          {(!user.departments || user.departments.length === 0) ? (
+                             <div className="bg-white/95 backdrop-blur-md p-10 rounded-3xl border border-stone-200 text-center shadow-xs">
+                               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 text-amber-500 mb-4">
+                                 <Building className="w-8 h-8" />
+                               </div>
+                               <h4 className="text-xl font-bold text-stone-900 mb-2">No Departments Assigned</h4>
+                               <p className="text-stone-500 max-w-md mx-auto mb-6">
+                                 You currently aren't assigned to any departments, so there are no KPIs for you to update.
+                               </p>
+                               <button 
+                                 onClick={() => { setNewNickname(user.name); setEditDepartments(user.departments || []); setShowProfileModal(true); }}
+                                 className="bg-stone-900 text-white font-bold py-2.5 px-6 rounded-xl transition hover:bg-stone-800 text-sm shadow-sm"
+                               >
+                                 Edit Profile to Join a Department
+                               </button>
+                             </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {kpis.filter(kpi => user.departments.includes(kpi.department)).map((kpi) => {
+                                const status = getKpiStatus(kpi);
+                                const isUpdating = updatingKpiId === kpi.id;
+                                
+                                let displayColor = 'text-stone-300';
+                                let bgBadge = 'bg-stone-100 text-stone-600';
+                                if(status === 'met') {
+                                  displayColor = 'text-emerald-500';
+                                  bgBadge = 'bg-emerald-100 text-emerald-800';
+                                }
+                                if(status === 'missed') {
+                                  displayColor = 'text-rose-500';
+                                  bgBadge = 'bg-rose-100 text-rose-800';
+                                }
+
+                                return (
+                                  <div key={kpi.id} className="bg-white/95 backdrop-blur-md p-6 rounded-3xl border border-stone-100 shadow-xs flex flex-col gap-4 hover:shadow-md transition">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 flex items-center gap-1">
+                                            <Building className="w-3 h-3" /> {kpi.department}
+                                          </span>
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${bgBadge}`}>
+                                            {status === 'pending' ? 'Waiting for Update' : `Target ${status}`}
+                                          </span>
+                                        </div>
+                                        <h5 className="font-extrabold text-stone-900 text-lg leading-snug">{kpi.title}</h5>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="text-sm font-medium text-stone-600 bg-stone-50 p-3 rounded-xl border border-stone-100 flex flex-col gap-1">
+                                      <div className="flex justify-between">
+                                        <span className="text-stone-500 uppercase text-[10px] font-bold tracking-wider">Target</span>
+                                        <span className="text-stone-900 font-bold">{formatTargetString(kpi)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-stone-500 uppercase text-[10px] font-bold tracking-wider">Champion</span>
+                                        <span className="text-stone-900 font-bold">{kpi.champion}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-auto bg-stone-50/50 p-4 rounded-2xl border border-stone-200 flex flex-col justify-between items-center text-center">
                                       <div className="mb-4">
-                                        <p className="text-[10px] uppercase font-bold tracking-wider text-stone-400">Current Value</p>
-                                        <p className={`text-3xl font-black ${displayColor} mt-1`}>
+                                        <p className="text-[10px] uppercase font-bold tracking-wider text-stone-400">Current Value ({kpi.frequency})</p>
+                                        <p className={`text-4xl font-black ${displayColor} mt-1`}>
                                           {kpi.currentValue === null ? '--' : `${kpi.currentValue}${kpi.format === 'percent' ? '%' : ''}`}
                                         </p>
                                       </div>
 
                                       {isUpdating ? (
-                                        <div className="w-full flex gap-1">
-                                          <input type="number" step="any" className="w-full px-2 py-1.5 rounded-lg border border-indigo-200 text-xs focus:ring-2 focus:ring-indigo-300" placeholder="New Value" value={tempKpiValue} onChange={(e) => setTempKpiValue(e.target.value)} autoFocus />
-                                          <button onClick={() => handleSaveKpiValue(kpi.id)} className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700">
-                                            <CheckCircle2 className="w-4 h-4" />
+                                        <div className="w-full flex gap-2">
+                                          <input type="number" step="any" className="w-full px-3 py-2 rounded-xl border border-sky-300 text-sm focus:ring-2 focus:ring-sky-400" placeholder="New Value" value={tempKpiValue} onChange={(e) => setTempKpiValue(e.target.value)} autoFocus />
+                                          <button onClick={() => handleSaveKpiValue(kpi.id)} className="bg-sky-600 text-white px-4 rounded-xl hover:bg-sky-700 font-bold flex items-center gap-1 shadow-sm">
+                                            Save <CheckCircle2 className="w-4 h-4" />
                                           </button>
                                         </div>
                                       ) : (
-                                        <button onClick={() => { setUpdatingKpiId(kpi.id); setTempKpiValue(''); }} className="text-xs font-bold bg-white border border-stone-200 text-stone-700 py-1.5 w-full rounded-lg hover:border-indigo-300 hover:text-indigo-700 transition shadow-sm">
-                                          Update {kpi.frequency}
+                                        <button onClick={() => { setUpdatingKpiId(kpi.id); setTempKpiValue(''); }} className="text-sm font-bold bg-white border-2 border-stone-200 text-stone-700 py-2.5 w-full rounded-xl hover:border-sky-400 hover:text-sky-700 transition shadow-sm">
+                                          Enter New Value
                                         </button>
                                       )}
                                     </div>
                                   </div>
                                 );
                               })}
+                              
+                              {kpis.filter(kpi => user.departments.includes(kpi.department)).length === 0 && (
+                                <div className="col-span-full py-12 text-center text-stone-500 italic bg-white/50 rounded-3xl border border-stone-200/50">
+                                  Your assigned departments currently have no active KPIs setup.
+                                </div>
+                              )}
                             </div>
-
-                          </div>
+                          )}
                         </div>
                       )}
 
