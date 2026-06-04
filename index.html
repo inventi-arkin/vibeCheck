@@ -552,6 +552,12 @@
             triggerToast('KPI value updated! Old value saved as previous.');
           };
 
+          const handleDeleteKpi = (id, title) => {
+            setKpis(kpis.filter(k => k.id !== id));
+            if (editingKpiId === id) handleCancelEditKpi(); // Clear form if editing
+            triggerToast(`KPI '${title}' removed successfully. 🗑️`);
+          };
+
           const getKpiStatus = (kpi) => {
             if (kpi.currentValue === null || kpi.currentValue === '') return 'pending';
             const val = parseFloat(kpi.currentValue);
@@ -1631,9 +1637,14 @@
 
                                       <div className="flex justify-between items-start">
                                         <h5 className="font-extrabold text-stone-900 text-lg leading-snug pr-4">{kpi.title}</h5>
-                                        <button onClick={() => handleEditKpiSetupClick(kpi)} className="text-stone-300 hover:text-indigo-500 transition shrink-0" title="Edit KPI Setup">
-                                          <Pencil className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex gap-3 shrink-0">
+                                          <button onClick={() => handleEditKpiSetupClick(kpi)} className="text-stone-300 hover:text-indigo-500 transition" title="Edit KPI Setup">
+                                            <Pencil className="w-4 h-4" />
+                                          </button>
+                                          <button onClick={() => handleDeleteKpi(kpi.id, kpi.title)} className="text-stone-300 hover:text-rose-500 transition" title="Delete KPI">
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
                                       </div>
                                       <p className="text-xs text-stone-500 mt-1 mb-3">{kpi.description}</p>
                                       
