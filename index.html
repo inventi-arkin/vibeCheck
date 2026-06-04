@@ -565,8 +565,10 @@
             const t2 = parseFloat(kpi.targetValue2);
 
             if (kpi.targetType === 'exact') return val === t1 ? 'met' : 'missed';
-            if (kpi.targetType === 'greater_than') return val >= t1 ? 'met' : 'missed';
-            if (kpi.targetType === 'less_than') return val <= t1 ? 'met' : 'missed';
+            if (kpi.targetType === 'greater_than') return val > t1 ? 'met' : 'missed';
+            if (kpi.targetType === 'less_than') return val < t1 ? 'met' : 'missed';
+            if (kpi.targetType === 'greater_than_or_equal') return val >= t1 ? 'met' : 'missed';
+            if (kpi.targetType === 'less_than_or_equal') return val <= t1 ? 'met' : 'missed';
             if (kpi.targetType === 'between') return (val >= t1 && val <= t2) ? 'met' : 'missed';
             return 'pending';
           };
@@ -576,6 +578,8 @@
             if (kpi.targetType === 'exact') return `Exactly ${kpi.targetValue1}${suffix}`;
             if (kpi.targetType === 'greater_than') return `Greater than ${kpi.targetValue1}${suffix}`;
             if (kpi.targetType === 'less_than') return `Less than ${kpi.targetValue1}${suffix}`;
+            if (kpi.targetType === 'greater_than_or_equal') return `Greater than or equal to ${kpi.targetValue1}${suffix}`;
+            if (kpi.targetType === 'less_than_or_equal') return `Less than or equal to ${kpi.targetValue1}${suffix}`;
             if (kpi.targetType === 'between') return `Between ${kpi.targetValue1}${suffix} and ${kpi.targetValue2}${suffix}`;
           };
 
@@ -584,6 +588,8 @@
             if (kpi.targetType === 'exact') return `=${kpi.targetValue1}${suffix}`;
             if (kpi.targetType === 'greater_than') return `>${kpi.targetValue1}${suffix}`;
             if (kpi.targetType === 'less_than') return `<${kpi.targetValue1}${suffix}`;
+            if (kpi.targetType === 'greater_than_or_equal') return `≥${kpi.targetValue1}${suffix}`;
+            if (kpi.targetType === 'less_than_or_equal') return `≤${kpi.targetValue1}${suffix}`;
             if (kpi.targetType === 'between') return `${kpi.targetValue1} - ${kpi.targetValue2}${suffix}`;
           };
 
@@ -1542,7 +1548,9 @@
                                     <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Target Type</label>
                                     <select value={newKpiTargetType} onChange={(e) => setNewKpiTargetType(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 text-sm">
                                       <option value="greater_than">Greater Than (&gt;)</option>
+                                      <option value="greater_than_or_equal">Greater Than or Equal (&ge;)</option>
                                       <option value="less_than">Less Than (&lt;)</option>
+                                      <option value="less_than_or_equal">Less Than or Equal (&le;)</option>
                                       <option value="exact">Exact Value (=)</option>
                                       <option value="between">In Between</option>
                                     </select>
