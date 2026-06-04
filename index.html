@@ -22,6 +22,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBcJhWCyUsjDYTP_cbOEPLNrIADOC8LfTM",
@@ -39,6 +40,8 @@
             window.GoogleAuthProvider = GoogleAuthProvider;
             window.signInWithPopup = signInWithPopup;
             window.signOut = signOut;
+            window.db = getFirestore(app);
+            window.firestoreFuncs = { doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs };
         } catch(e) {
             console.error("Firebase init failed", e);
         }
@@ -89,74 +92,42 @@
         const Settings = (p) => <FAIcon name="fa-gear" {...p} />;
         const ClipboardEdit = (p) => <FAIcon name="fa-clipboard-list" {...p} />;
 
-        function App() {
-          // --- SYSTEM USERS STATE ---
-          const [systemUsers, setSystemUsers] = useState([
+        const INITIAL_USERS = [
             { id: 1, name: 'Taylor Sparks', email: 'taylor@inventi.ph', departments: ['Customer Support', 'UI Design'] },
             { id: 2, name: 'Jamie Sunny', email: 'jamie@inventi.ph', departments: ['Marketing', 'Sales'] },
             { id: 3, name: 'Jordan River', email: 'jordan@inventi.asia', departments: ['Customer Support'] },
             { id: 4, name: 'Alex Woods', email: 'alex@inventi.ph', departments: ['Development', 'Quality Assurance'] },
             { id: 5, name: 'Morgan Bloom', email: 'morgan@inventi.asia', departments: ['Human Resource'] }
-          ]);
+        ];
 
-          // --- STATE ---
-          const [user, setUser] = useState(null);
-          const [loginEmail, setLoginEmail] = useState('');
-          const [loginError, setLoginError] = useState('');
-          const [isLoading, setIsLoading] = useState(false);
-          
-          // Profile Update State
-          const [showProfileModal, setShowProfileModal] = useState(false);
-          const [newNickname, setNewNickname] = useState('');
-          const [editDepartments, setEditDepartments] = useState([]);
-
-          // Active view inside the dashboard
-          const [activeTab, setActiveTab] = useState('overview');
-
-          // Interactive KPI State - Vibe Checks
-          const [vibeSubmissions, setVibeSubmissions] = useState([
+        const INITIAL_VIBES = [
             { id: 1, name: 'Taylor Sparks', vibe: 'Great', note: 'Had an amazing brainstorming session with the design crew!', time: '2 hours ago', score: 100 },
             { id: 2, name: 'Jordan River', vibe: 'Good', note: 'Product is coming along, feeling steady.', time: '4 hours ago', score: 80 },
             { id: 3, name: 'Jamie Sunny', vibe: 'Okay', note: 'A bit busy today, but getting through it step-by-step.', time: '1 day ago', score: 60 },
             { id: 4, name: 'Morgan Bloom', vibe: 'Great', note: 'Super grateful for the warm welcome back!', time: '1 day ago', score: 100 },
             { id: 5, name: 'Alex Woods', vibe: 'Hard Day', note: 'Feeling a bit overwhelmed with the timeline.', time: '2 days ago', score: 30 }
-          ]);
+        ];
 
-          // Daily Vibe Input Form
-          const [myVibe, setMyVibe] = useState('Great');
-          const [vibeNote, setVibeNote] = useState('');
-
-          // Active Collaborations State
-          const [collaborations, setCollaborations] = useState([
+        const INITIAL_COLLABS = [
             { id: 1, title: 'Warm Welcome Kit', lead: 'Taylor Sparks', status: 'In Progress', category: 'Culture', helpers: 3 },
             { id: 2, title: 'Knowledge Exchange Library', lead: 'Jamie Sunny', status: 'Planning', category: 'Learning', helpers: 5 },
             { id: 3, title: 'Mindfulness Mondays', lead: 'Jordan River', status: 'Completed', category: 'Wellness', helpers: 8 },
             { id: 4, title: 'Community Garden Map', lead: 'Morgan Bloom', status: 'In Progress', category: 'Eco', helpers: 2 }
-          ]);
-          const [newCollabTitle, setNewCollabTitle] = useState('');
-          const [newCollabCategory, setNewCollabCategory] = useState('Culture');
+        ];
 
-          // Shout-outs State
-          const [shoutOuts, setShoutOuts] = useState([
+        const INITIAL_SHOUTS = [
             { id: 1, from: 'Jordan River', to: 'Taylor Sparks', text: 'Thank you for bringing so much creative energy to the meeting today! You made everyone feel heard.', color: 'bg-amber-100' },
             { id: 2, from: 'Alex Woods', to: 'Jamie Sunny', text: 'Shout out to Jamie for taking the extra hour to explain the backend roadmap. Life saver!', color: 'bg-emerald-100' },
             { id: 3, from: 'Taylor Sparks', to: 'Morgan Bloom', text: 'Your cheerful morning posts keep my spirits high every day!', color: 'bg-purple-100' }
-          ]);
-          const [newShoutTo, setNewShoutTo] = useState('');
-          const [newShoutText, setNewShoutText] = useState('');
-          const [newShoutColor, setNewShoutColor] = useState('bg-amber-100');
+        ];
 
-          // Growth / Knowledge Sharing Journal State
-          const [growthHours, setGrowthHours] = useState([
+        const INITIAL_GROWTH = [
             { id: 1, contributor: 'Taylor Sparks', activity: 'Figma Auto-Layout Masterclass', hours: 2, date: 'May 24' },
             { id: 2, contributor: 'Jamie Sunny', activity: 'Peer Code Review & Guidance', hours: 3, date: 'May 23' },
             { id: 3, contributor: 'Jordan River', activity: 'Shared Meditation Guide Prep', hours: 1.5, date: 'May 22' }
-          ]);
-          const [newActivity, setNewActivity] = useState('');
-          const [newHours, setNewHours] = useState('');
+        ];
 
-          // Departments State
-          const [departments, setDepartments] = useState([
+        const INITIAL_DEPTS = [
             { id: 1, name: 'Marketing', members: 8, vibe: 92 },
             { id: 2, name: 'Customer Support', members: 15, vibe: 78 },
             { id: 3, name: 'Sales', members: 10, vibe: 85 },
@@ -167,11 +138,9 @@
             { id: 8, name: 'Human Resource', members: 3, vibe: 89 },
             { id: 9, name: 'Finance', members: 5, vibe: 80 },
             { id: 10, name: 'Business Analyst', members: 7, vibe: 86 }
-          ]);
-          const [newDeptName, setNewDeptName] = useState('');
+        ];
 
-          // KPIs State
-          const [kpis, setKpis] = useState([
+        const INITIAL_KPIS = [
             {
               id: 1,
               title: 'Customer Satisfaction Score',
@@ -205,7 +174,7 @@
               title: 'First Contact Resolution',
               description: 'Percentage of tickets resolved on first interaction.',
               department: 'Customer Support',
-              targetType: 'greater_than',
+              targetType: 'greater_than_or_equal',
               targetValue1: 75,
               targetValue2: '',
               format: 'percent',
@@ -228,8 +197,71 @@
               currentValue: 96,
               frequency: 'Annual'
             }
-          ]);
+        ];
+
+        function App() {
+          const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'vibecheck-app';
+
+          // --- DB HELPERS ---
+          const pushToDB = async (collName, data) => {
+            if (!window.db) return;
+            const { collection, addDoc } = window.firestoreFuncs;
+            await addDoc(collection(window.db, 'artifacts', appId, 'public', 'data', collName), { ...data, timestamp: Date.now() });
+          };
+
+          const updateInDB = async (collName, id, data) => {
+            if (!window.db) return;
+            const { doc, updateDoc } = window.firestoreFuncs;
+            await updateDoc(doc(window.db, 'artifacts', appId, 'public', 'data', collName, id.toString()), data);
+          };
+
+          const deleteFromDB = async (collName, id) => {
+            if (!window.db) return;
+            const { doc, deleteDoc } = window.firestoreFuncs;
+            await deleteDoc(doc(window.db, 'artifacts', appId, 'public', 'data', collName, id.toString()));
+          };
+
+          // --- STATE ---
+          const [systemUsers, setSystemUsers] = useState([]);
+          const [vibeSubmissions, setVibeSubmissions] = useState([]);
+          const [collaborations, setCollaborations] = useState([]);
+          const [shoutOuts, setShoutOuts] = useState([]);
+          const [growthHours, setGrowthHours] = useState([]);
+          const [departments, setDepartments] = useState([]);
+          const [kpis, setKpis] = useState([]);
+
+          const [user, setUser] = useState(null);
+          const [loginError, setLoginError] = useState('');
+          const [isLoading, setIsLoading] = useState(false);
           
+          // Profile Update State
+          const [showProfileModal, setShowProfileModal] = useState(false);
+          const [newNickname, setNewNickname] = useState('');
+          const [editDepartments, setEditDepartments] = useState([]);
+
+          // Active view inside the dashboard
+          const [activeTab, setActiveTab] = useState('overview');
+
+          // Daily Vibe Input Form
+          const [myVibe, setMyVibe] = useState('Great');
+          const [vibeNote, setVibeNote] = useState('');
+
+          // Active Collaborations State Form
+          const [newCollabTitle, setNewCollabTitle] = useState('');
+          const [newCollabCategory, setNewCollabCategory] = useState('Culture');
+
+          // Shout-outs State Form
+          const [newShoutTo, setNewShoutTo] = useState('');
+          const [newShoutText, setNewShoutText] = useState('');
+          const [newShoutColor, setNewShoutColor] = useState('bg-amber-100');
+
+          // Growth Journal Form
+          const [newActivity, setNewActivity] = useState('');
+          const [newHours, setNewHours] = useState('');
+
+          // Departments Form
+          const [newDeptName, setNewDeptName] = useState('');
+
           // KPI Setup Form State
           const [editingKpiId, setEditingKpiId] = useState(null);
           const [newKpiTitle, setNewKpiTitle] = useState('');
@@ -243,17 +275,71 @@
           const [newKpiFreq, setNewKpiFreq] = useState('Monthly');
           const [newKpiPrevVal, setNewKpiPrevVal] = useState('');
           
-          // KPI Updating State (Value updates)
+          // KPI Updating State
           const [updatingKpiId, setUpdatingKpiId] = useState(null);
           const [tempKpiValue, setTempKpiValue] = useState('');
 
-          // Notifications / Feedback Messages
+          // Notifications
           const [toast, setToast] = useState(null);
 
           // Presentation State
           const [showPresentation, setShowPresentation] = useState(false);
-          const [presentationView, setPresentationView] = useState('title'); // 'title', 'menu', or department name
+          const [presentationView, setPresentationView] = useState('title');
           const [slidePage, setSlidePage] = useState(0);
+
+          // --- REALTIME SYNC ---
+          useEffect(() => {
+            if (!user || !window.db) return;
+
+            const seedDatabase = async () => {
+              const { collection, getDocs, setDoc, doc } = window.firestoreFuncs;
+              const checkSnap = await getDocs(collection(window.db, 'artifacts', appId, 'public', 'data', 'departments'));
+              if (!checkSnap.empty) return; // Already seeded
+              
+              const seedPromises = [];
+              const seedCollection = (collName, dataArray) => {
+                  dataArray.forEach(item => {
+                      const docRef = doc(window.db, 'artifacts', appId, 'public', 'data', collName, item.id.toString());
+                      seedPromises.push(setDoc(docRef, { ...item, timestamp: Date.now() }));
+                  });
+              };
+
+              seedCollection('systemUsers', INITIAL_USERS);
+              seedCollection('vibeSubmissions', INITIAL_VIBES);
+              seedCollection('collaborations', INITIAL_COLLABS);
+              seedCollection('shoutOuts', INITIAL_SHOUTS);
+              seedCollection('growthHours', INITIAL_GROWTH);
+              seedCollection('departments', INITIAL_DEPTS);
+              seedCollection('kpis', INITIAL_KPIS);
+              
+              await Promise.all(seedPromises);
+            };
+
+            seedDatabase();
+
+            const { collection, onSnapshot } = window.firestoreFuncs;
+            const basePath = ['artifacts', appId, 'public', 'data'];
+
+            const setupListener = (collName, setStateFunc) => {
+                return onSnapshot(collection(window.db, ...basePath, collName), (snap) => {
+                    const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                    data.sort((a, b) => b.timestamp - a.timestamp);
+                    setStateFunc(data);
+                }, (err) => console.error(err));
+            };
+
+            const unsubUsers = setupListener('systemUsers', setSystemUsers);
+            const unsubVibes = setupListener('vibeSubmissions', setVibeSubmissions);
+            const unsubCollabs = setupListener('collaborations', setCollaborations);
+            const unsubShouts = setupListener('shoutOuts', setShoutOuts);
+            const unsubGrowth = setupListener('growthHours', setGrowthHours);
+            const unsubDepts = setupListener('departments', setDepartments);
+            const unsubKpis = setupListener('kpis', setKpis);
+
+            return () => {
+                unsubUsers(); unsubVibes(); unsubCollabs(); unsubShouts(); unsubGrowth(); unsubDepts(); unsubKpis();
+            };
+          }, [user]);
 
           const triggerToast = (msg) => {
             setToast(msg);
@@ -307,9 +393,8 @@
               let name = existingUser ? existingUser.name : loggedInUser.displayName || email.split('@')[0];
 
               if (!existingUser) {
-                const newUser = { id: Date.now(), name: name, email: email, departments: [] };
-                setSystemUsers([...systemUsers, newUser]);
-                existingUser = newUser;
+                const newUser = { name: name, email: email, departments: [] };
+                pushToDB('systemUsers', newUser);
               }
 
               setUser({
@@ -317,22 +402,22 @@
                 role: 'Community Member',
                 email: email,
                 avatar: loggedInUser.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`,
-                departments: existingUser.departments || []
+                departments: existingUser?.departments || []
               });
               
               triggerToast(`Welcome to the circle, ${name}! ✨`);
             } catch (error) {
               if (error.code === 'auth/unauthorized-domain') {
+                console.warn("Domain not authorized in Firebase. Using preview mode fallback.");
                 // Graceful fallback for Canvas/Preview environments
-                const fallbackEmail = loginEmail.trim() || 'demo@inventi.ph';
+                const fallbackEmail = 'demo@inventi.ph';
                 let name = fallbackEmail.split('@')[0];
                 name = name.charAt(0).toUpperCase() + name.slice(1);
                 
                 let existingUser = systemUsers.find(u => u.email === fallbackEmail);
                 if (!existingUser) {
-                  const newUser = { id: Date.now(), name: name, email: fallbackEmail, departments: [] };
-                  setSystemUsers([...systemUsers, newUser]);
-                  existingUser = newUser;
+                  const newUser = { name: name, email: fallbackEmail, departments: [] };
+                  pushToDB('systemUsers', newUser);
                 }
 
                 setUser({
@@ -340,7 +425,7 @@
                   role: 'Community Member (Preview)',
                   email: fallbackEmail,
                   avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`,
-                  departments: existingUser.departments || []
+                  departments: existingUser?.departments || []
                 });
                 
                 triggerToast(`Preview Environment Detected. Bypassed login as ${name}! ✨`);
@@ -357,12 +442,12 @@
             e.preventDefault();
             if (!newNickname.trim()) return;
             
-            // Update active user
+            const userRec = systemUsers.find(u => u.email === user.email);
+            if (userRec && userRec.id) {
+                updateInDB('systemUsers', userRec.id, { name: newNickname, departments: editDepartments });
+            }
+            
             setUser({ ...user, name: newNickname, departments: editDepartments });
-            
-            // Update in system users list
-            setSystemUsers(systemUsers.map(u => u.email === user.email ? { ...u, name: newNickname, departments: editDepartments } : u));
-            
             setShowProfileModal(false);
             triggerToast('Profile updated successfully! 👤');
           };
@@ -378,7 +463,6 @@
               await window.signOut(window.firebaseAuth);
             }
             setUser(null);
-            setLoginEmail('');
             setActiveTab('overview');
             triggerToast('Logged out of the circle. See you soon!');
           };
@@ -393,15 +477,14 @@
             if (myVibe === 'Hard Day') score = 25;
 
             const newSub = {
-              id: Date.now(),
               name: user ? user.name : 'Guest Member',
               vibe: myVibe,
               note: vibeNote || "Just checked in!",
-              time: 'Just now',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               score
             };
 
-            setVibeSubmissions([newSub, ...vibeSubmissions]);
+            pushToDB('vibeSubmissions', newSub);
             setVibeNote('');
             triggerToast('Thank you for sharing your vibe! 💛');
           };
@@ -411,14 +494,13 @@
             if (!newShoutTo.trim() || !newShoutText.trim()) return;
 
             const newShout = {
-              id: Date.now(),
               from: user ? user.name : 'Kind Soul',
               to: newShoutTo,
               text: newShoutText,
               color: newShoutColor
             };
 
-            setShoutOuts([newShout, ...shoutOuts]);
+            pushToDB('shoutOuts', newShout);
             setNewShoutTo('');
             setNewShoutText('');
             triggerToast('Shout-out posted to the hearth! 🎉');
@@ -429,7 +511,6 @@
             if (!newCollabTitle.trim()) return;
 
             const newCol = {
-              id: Date.now(),
               title: newCollabTitle,
               lead: user ? user.name : 'Community Catalyst',
               status: 'Planning',
@@ -437,7 +518,7 @@
               helpers: 1
             };
 
-            setCollaborations([...collaborations, newCol]);
+            pushToDB('collaborations', newCol);
             setNewCollabTitle('');
             triggerToast('New collaborative seed planted! 🌱');
           };
@@ -447,14 +528,13 @@
             if (!newActivity.trim() || !newHours) return;
 
             const newLog = {
-              id: Date.now(),
               contributor: user ? user.name : 'Quiet Learner',
               activity: newActivity,
               hours: parseFloat(newHours),
-              date: 'Today'
+              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
             };
 
-            setGrowthHours([newLog, ...growthHours]);
+            pushToDB('growthHours', newLog);
             setNewActivity('');
             setNewHours('');
             triggerToast('Growth hours registered on the dashboard! 📚');
@@ -465,13 +545,12 @@
             if (!newDeptName.trim()) return;
 
             const newDept = {
-              id: Date.now(),
               name: newDeptName,
               members: 1, 
               vibe: 100 
             };
 
-            setDepartments([...departments, newDept]);
+            pushToDB('departments', newDept);
             setNewDeptName('');
             triggerToast(`Welcome to the community, ${newDeptName} team! 🏢`);
           };
@@ -526,17 +605,10 @@
             };
 
             if (editingKpiId) {
-              // Update existing KPI setup
-              setKpis(kpis.map(k => k.id === editingKpiId ? { ...k, ...kpiData } : k));
+              updateInDB('kpis', editingKpiId, kpiData);
               triggerToast(`KPI '${newKpiTitle}' updated successfully! 📝`);
             } else {
-              // Add new KPI
-              const newKpi = {
-                ...kpiData,
-                id: Date.now(),
-                currentValue: null // Initially empty for new
-              };
-              setKpis([newKpi, ...kpis]);
+              pushToDB('kpis', { ...kpiData, currentValue: null });
               triggerToast(`New KPI '${newKpiTitle}' planted successfully! 🎯`);
             }
 
@@ -545,17 +617,11 @@
 
           const handleSaveKpiValue = (id) => {
             if(tempKpiValue === '') return;
-            // Pushes the old current value to the previous value slot when updating!
-            setKpis(kpis.map(k => k.id === id ? { ...k, previousValue: k.currentValue, currentValue: parseFloat(tempKpiValue) } : k));
+            const kpi = kpis.find(k => k.id === id);
+            updateInDB('kpis', id, { previousValue: kpi.currentValue, currentValue: parseFloat(tempKpiValue) });
             setUpdatingKpiId(null);
             setTempKpiValue('');
             triggerToast('KPI value updated! Old value saved as previous.');
-          };
-
-          const handleDeleteKpi = (id, title) => {
-            setKpis(kpis.filter(k => k.id !== id));
-            if (editingKpiId === id) handleCancelEditKpi(); // Clear form if editing
-            triggerToast(`KPI '${title}' removed successfully. 🗑️`);
           };
 
           const getKpiStatus = (kpi) => {
@@ -1342,7 +1408,7 @@
                                       <span className="text-stone-400 flex items-center gap-1"><Users className="w-4 h-4" /> {collab.helpers} contributors</span>
                                       {collab.status !== 'Completed' && (
                                         <button onClick={() => {
-                                            setCollaborations(collaborations.map(c => c.id === collab.id ? {...c, helpers: c.helpers + 1, status: 'In Progress'} : c));
+                                            updateInDB('collaborations', collab.id, { helpers: collab.helpers + 1, status: 'In Progress' });
                                             triggerToast(`Joined as helper for ${collab.title}! 🤝`);
                                           }} className="font-bold text-amber-600 hover:text-amber-700 hover:underline">
                                           Join as Helper
@@ -1470,7 +1536,7 @@
                                     <button onClick={() => triggerToast(`Viewing ${dept.name} pulse board... (Coming soon!)`)} className="font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1">
                                       <Activity className="w-3 h-3" /> View Team Pulse
                                     </button>
-                                    <button onClick={() => { setDepartments(departments.filter(d => d.id !== dept.id)); triggerToast(`${dept.name} department removed.`); }} className="text-stone-300 hover:text-rose-500 transition" title="Remove Department">
+                                    <button onClick={() => { deleteFromDB('departments', dept.id); triggerToast(`${dept.name} department removed.`); }} className="text-stone-300 hover:text-rose-500 transition" title="Remove Department">
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
@@ -1645,11 +1711,11 @@
 
                                       <div className="flex justify-between items-start">
                                         <h5 className="font-extrabold text-stone-900 text-lg leading-snug pr-4">{kpi.title}</h5>
-                                        <div className="flex gap-3 shrink-0">
+                                        <div className="flex gap-2 shrink-0">
                                           <button onClick={() => handleEditKpiSetupClick(kpi)} className="text-stone-300 hover:text-indigo-500 transition" title="Edit KPI Setup">
                                             <Pencil className="w-4 h-4" />
                                           </button>
-                                          <button onClick={() => handleDeleteKpi(kpi.id, kpi.title)} className="text-stone-300 hover:text-rose-500 transition" title="Delete KPI">
+                                          <button onClick={() => { deleteFromDB('kpis', kpi.id); triggerToast(`KPI '${kpi.title}' removed.`); }} className="text-stone-300 hover:text-rose-500 transition" title="Delete KPI">
                                             <Trash2 className="w-4 h-4" />
                                           </button>
                                         </div>
