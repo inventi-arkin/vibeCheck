@@ -1895,19 +1895,23 @@
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-slate-900/50 z-0"></div>
                         <div className="z-10 space-y-6">
                           <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-lg">
-                            INVENTI 2.0 DASHBOARD
-                          </h1>
-                          <h2 className="text-2xl md:text-3xl font-light text-slate-400 uppercase tracking-widest">
-                            Summary Of
-                          </h2>
-                          <h3 className="text-3xl md:text-5xl font-bold text-sky-400 uppercase drop-shadow-md">
-                            {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-                          </h3>
-                        </div>
-                        <button 
-                          onClick={() => { setPresentationView('menu'); setSlidePage(0); }}
-                          className="absolute bottom-4 right-4 text-sky-400 hover:text-sky-300 font-bold flex items-center gap-2 group z-10 bg-slate-800 px-6 py-3 rounded-xl border border-sky-400/20"
-                        >
+                    INVENTI 2.0 DASHBOARD
+                  </h1>
+                  <h2 className="text-2xl md:text-3xl font-light text-slate-400 uppercase tracking-widest">
+                    Summary Of
+                  </h2>
+                  <h3 className="text-3xl md:text-5xl font-bold text-sky-400 uppercase drop-shadow-md">
+                    {(() => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - 1);
+                      return d.toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase();
+                    })()}
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => { setPresentationView('menu'); setSlidePage(0); }}
+                  className="absolute bottom-4 right-4 text-sky-400 hover:text-sky-300 font-bold flex items-center gap-2 group z-10 bg-slate-800 px-6 py-3 rounded-xl border border-sky-400/20"
+                >
                           Start Presentation <Presentation className="w-5 h-5 group-hover:scale-110 transition" />
                         </button>
                       </div>
